@@ -179,6 +179,12 @@
         .btn-login:active {
             transform: scale(0.98);
         }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
         .alert {
             padding: 0.875rem;
@@ -191,6 +197,17 @@
         .alert.show {
             display: block;
             animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .alert-error {
@@ -1143,12 +1160,20 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="email" placeholder="email@example.com" required>
+                    <input type="email" id="email" placeholder="admin@nalaaircon.com" required>
                 </div>
                 <div class="form-group">
                     <label>Password</label>
                     <input type="password" id="password" placeholder="••••••••" required>
                 </div>
+                
+                <div style="background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 0.875rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <p style="color: #92400E; font-size: 0.875rem; margin: 0;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Info:</strong> Gunakan akun Firebase yang sama dengan versi desktop
+                    </p>
+                </div>
+                
                 <button type="submit" class="btn-login">
                     <i class="fas fa-sign-in-alt"></i> Masuk
                 </button>
@@ -1334,15 +1359,20 @@
         let markers = [];
         let allProjects = [];
         let currentFilter = 'all';
+        
+        console.log('🔥 Firebase initialized successfully');
+        console.log('📱 App version: Nala Aircon Mobile v1.0');
 
         // Authentication
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                console.log('✅ User logged in:', user.email);
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
                 loadProjects();
                 loadMap();
             } else {
+                console.log('❌ No user logged in');
                 document.getElementById('loginScreen').style.display = 'flex';
                 document.getElementById('mainApp').style.display = 'none';
             }
@@ -1352,11 +1382,50 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const submitBtn = e.target.querySelector('.btn-login');
+            
+            console.log('🔐 Attempting login with:', email);
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
             
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log('✅ Login successful:', userCredential.user.email);
+                showAlert('loginAlert', '✅ Login berhasil!', 'success');
             } catch (error) {
-                showAlert('loginAlert', 'Login gagal: ' + error.message, 'error');
+                console.error('❌ Login error:', error.code, error.message);
+                let errorMessage = 'Login gagal. ';
+                
+                switch(error.code) {
+                    case 'auth/invalid-email':
+                        errorMessage += 'Format email tidak valid.';
+                        break;
+                    case 'auth/user-not-found':
+                        errorMessage += 'Email tidak terdaftar.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage += 'Password salah.';
+                        break;
+                    case 'auth/invalid-credential':
+                        errorMessage += 'Email atau password salah.';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage += 'Terlalu banyak percobaan. Coba lagi nanti.';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage += 'Tidak ada koneksi internet.';
+                        break;
+                    default:
+                        errorMessage += error.message;
+                }
+                
+                showAlert('loginAlert', errorMessage, 'error');
+                
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk';
             }
         });
 
